@@ -52,56 +52,56 @@ hg19 <- BSgenome.Hsapiens.UCSC.hg19
 hg19
 
 # Getting chromosome sequences.
-chr1 <- hg19$chr1
-chr1
-chr2 <- hg19$chr2
-chr2
-chr3 <- hg19$chr3
-chr3
-chr4 <- hg19$chr4
-chr4
-chr5 <- hg19$chr5
-chr5
-chr6 <- hg19$chr6
-chr6
-chr7 <- hg19$chr7
-chr7
-chr8 <- hg19$chr8
-chr8
-chr9 <- hg19$chr9
-chr9
-chr10 <- hg19$chr10
-chr10
-chr11 <- hg19$chr11
-chr11
-chr12 <- hg19$chr12
-chr12
-chr13 <- hg19$chr13
-chr13
-chr14 <- hg19$chr14
-chr14
-chr15 <- hg19$chr15
-chr15
-chr16 <- hg19$chr16
-chr16
-chr17 <- hg19$chr17
-chr17
-chr18 <- hg19$chr18
-chr18
-chr19 <- hg19$chr19
-chr19
-chr20 <- hg19$chr20
-chr20
-chr21 <- hg19$chr21
-chr21
-chr22 <- hg19$chr22
-chr22
-chrX <- hg19$chrX
-chrX
-chrY <- hg19$chrY
-chrY
-chrM <- hg19$chrM
-chrM
+# chr1 <- hg19$chr1
+# chr1
+# chr2 <- hg19$chr2
+# chr2
+# chr3 <- hg19$chr3
+# chr3
+# chr4 <- hg19$chr4
+# chr4
+# chr5 <- hg19$chr5
+# chr5
+# chr6 <- hg19$chr6
+# chr6
+# chr7 <- hg19$chr7
+# chr7
+# chr8 <- hg19$chr8
+# chr8
+# chr9 <- hg19$chr9
+# chr9
+# chr10 <- hg19$chr10
+# chr10
+# chr11 <- hg19$chr11
+# chr11
+# chr12 <- hg19$chr12
+# chr12
+# chr13 <- hg19$chr13
+# chr13
+# chr14 <- hg19$chr14
+# chr14
+# chr15 <- hg19$chr15
+# chr15
+# chr16 <- hg19$chr16
+# chr16
+# chr17 <- hg19$chr17
+# chr17
+# chr18 <- hg19$chr18
+# chr18
+# chr19 <- hg19$chr19
+# chr19
+# chr20 <- hg19$chr20
+# chr20
+# chr21 <- hg19$chr21
+# chr21
+# chr22 <- hg19$chr22
+# chr22
+# chrX <- hg19$chrX
+# chrX
+# chrY <- hg19$chrY
+# chrY
+# chrM <- hg19$chrM
+# chrM
 
 
 # Load cancer mutation data.
@@ -486,3 +486,44 @@ for (i in 1:length(unique(mut.data$SampleID))) {
     )
   }
 }
+bin.sample
+unique(bin.sample$SampleID)
+
+bin.lowgc.sample.lme <- lmer(
+  data = bin.sample[bin.sample$GC.content < 0.4,],
+  formula = mut.count ~ GC.content + cds.binary + transcript.binary + hist.binary + lincRNA.binary + (1|chr) + (1|SampleID)
+)
+summary(bin.lowgc.sample.lme)
+
+bin.highgc.sample.lme <- lmer(
+  data = bin.sample[bin.sample$GC.content >= 0.4,],
+  formula = mut.count ~ GC.content + cds.binary + transcript.binary + hist.binary + lincRNA.binary + (1|chr) + (1|SampleID)
+)
+summary(bin.highgc.sample.lme)
+
+# Comparing the mixed models vs the fixed effect only models.
+bin.features.normchr$fixed.fit <- ifelse(bin.features.normchr$GC.content < 0.4,
+                                         predict(bin.lowgc.lm, newdata = bin.features.normchr,
+                                                 type = "response"),
+                                         predict(bin.highgc.lm, newdata = bin.features.normchr,
+                                                 type = "response"))
+bin.features.normchr[, c("id", "mut.count", "fixed.fit")]
+bin.features.normchr$mixed.fit <- ifelse(
+  bin.features.normchr$GC.content < 0.4,
+  predict(bin.lowgc.lme, newdata = bin.features.normchr, type = "response", re.form = NA, random.only = F),
+  predict(bin.highgc.lme, newdata = bin.features.normchr, type = "response", re.form = NA, random.only = F)
+)
+
+cor.test(bin.features.normchr$fixed.fit, bin.features.normchr$mixed.fit, method = "spearman")
+summary(lm(
+  data = bin.features.normchr,
+  formula = mut.count ~ fixed.fit
+))
+summary(lm(
+  data = bin.features.normchr,
+  formula = mut.count ~ mixed.fit
+))
+AIC(bin.lowgc.lm)
+AIC(bin.highgc.lm)
+AIC(bin.lowgc.lme)
+AIC(bin.highgc.lme)
