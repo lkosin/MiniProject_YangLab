@@ -178,7 +178,9 @@ seqlevels(hg19.txdb) <- seqlevels0(hg19.txdb)
 # Looking for other features on annotation hub.
 ahub <- AnnotationHub::AnnotationHub()
 ahub.gr.hs.ucsc.hg19 <- ahub[ahub$rdataclass == "GRanges" & ahub$species == "Homo sapiens" & ahub$dataprovider == "UCSC" & ahub$genome == "hg19",]
-ahub.gr.hs.ucsc.hg19
+ahub.gr.hs.ucsc.hg19$title # Microsatellite is 114
+ahub.gr.hs.ucsc.hg19[[114]]
+hg19.microsatellites.gr <- ahub.gr.hs.ucsc.hg19[[114]]
 
 # Checking Organism.dplyr
 src.hg19 <- src_organism("TxDb.Hsapiens.UCSC.hg19.knownGene")
@@ -286,30 +288,30 @@ hg19.cds <- cds(hg19.txdb)
 hg19.cds
 
 # Making a function to convert an GRanges annotation object to a more easily parseable data frame.
-gr.dataframe <- function(gr.object){
-  require(tidyverse)
-  n.gr <- length(gr.object)
-  gr.df <- tibble(
-    "id" = c(1:n.gr),
-    "chr" = as.vector(seqnames(gr.object)),
-    "start" = start(gr.object),
-    "end" = end(gr.object),
-    "strand" = as.vector(strand(gr.object))
-  )
-  return(gr.df)
-}
-hg19.cds.df <- gr.dataframe(hg19.cds)
-hg19.transcripts.df <- gr.dataframe(hg19.transcripts)
-hg19.cds.df
-hg19.transcripts.df
+# gr.dataframe <- function(gr.object){
+#   require(tidyverse)
+#   n.gr <- length(gr.object)
+#   gr.df <- tibble(
+#     "id" = c(1:n.gr),
+#     "chr" = as.vector(seqnames(gr.object)),
+#     "start" = start(gr.object),
+#     "end" = end(gr.object),
+#     "strand" = as.vector(strand(gr.object))
+#   )
+#   return(gr.df)
+# }
+# hg19.cds.df <- gr.dataframe(hg19.cds)
+# hg19.transcripts.df <- gr.dataframe(hg19.transcripts)
+# hg19.cds.df
+# hg19.transcripts.df
 
 # Making a function to score as 1 or 0 whether a window contains a feature in an annotation list.
-window.feature <- function(start.loc, stop.loc, feature.start.list, feature.stop.list){
-  feature.start.in.window <- feature.start.list[feature.start.list >= start.loc & feature.start.list <= stop.loc]
-  feature.stop.in.window <- feature.stop.list[feature.stop.list >= stop.loc & feature.stop.list <= stop.loc]
-  in.window <- ifelse(length(feature.start.in.window) >= 1 | length(feature.stop.in.window) >= 1, 1, 0)
-  return(in.window)
-}
+# window.feature <- function(start.loc, stop.loc, feature.start.list, feature.stop.list){
+#   feature.start.in.window <- feature.start.list[feature.start.list >= start.loc & feature.start.list <= stop.loc]
+#   feature.stop.in.window <- feature.stop.list[feature.stop.list >= stop.loc & feature.stop.list <= stop.loc]
+#   in.window <- ifelse(length(feature.start.in.window) >= 1 | length(feature.stop.in.window) >= 1, 1, 0)
+#   return(in.window)
+# }
 
 # Making a function to take a data frame of annotations and score whether a window has the annotation in question.
 # INCOMPLETE: SEEMS UNNECESSARY BECAUSE OVERLAPPING REGIONS FUNCTIONS IN GRANGES ALREADY EXIST.
@@ -360,16 +362,20 @@ bin.features.all$transcript.distance <- NA
 
 hg19.cds.distance <- distanceToNearest(hg19.bins[seqnames(hg19.bins) %in% chromosomes.norm[1:24]], hg19.cds, ignore.strand = T)
 hg19.transcripts.distance <- distanceToNearest(hg19.bins[seqnames(hg19.bins) %in% chromosomes.norm[1:24]], hg19.transcripts, ignore.strand = T)
+hg19.microsatellites.distance <- distanceToNearest(hg19.bins[seqnames(hg19.bins) %in% chromosomes.norm[1:24]],
+                                                   hg19.microsatellites.gr, ignore.strand = T)
 
 bin.features.normchr <- bin.features.all[bin.features.all$chr %in% chromosomes.norm[1:24],]
 bin.features.normchr
 
 bin.features.normchr$cds.distance <- mcols(hg19.cds.distance)[[1]]
 bin.features.normchr$transcript.distance <- mcols(hg19.transcripts.distance)[[1]]
+bin.features.normchr$micro.distance <- mcols(hg19.microsatellites.distance)[[1]]
 
 bin.features.normchr$cds.binary <- ifelse(bin.features.normchr$cds.distance == 0, 1, 0)
 bin.features.normchr$transcript.binary <- ifelse(bin.features.normchr$transcript.distance == 0, 1, 0)
-
+bin.features.normchr$micro.binary <- ifelse(bin.features.normchr$micro.distance == 0, 1, 0)
+  
 bin.features.normchr
 
 # Checking distributions.
@@ -444,32 +450,32 @@ bin.features.normchr
 # Building linear models to check associations.
 bin.all.lm <- lm(
   data = bin.features.normchr,
-  formula = mut.count ~ GC.content + cds.binary + transcript.binary + hist.binary + lincRNA.binary
+  formula = mut.count ~ GC.content + cds.binary + micro.binary + hist.binary + lincRNA.binary
 )
 summary(bin.all.lm)
 
 bin.lowgc.lm <- lm(
   data = bin.features.normchr[bin.features.normchr$GC.content < 0.4,],
-  formula = mut.count ~ GC.content + cds.binary + transcript.binary + hist.binary + lincRNA.binary
+  formula = mut.count ~ GC.content + cds.binary + micro.binary + hist.binary + lincRNA.binary
 )
 summary(bin.lowgc.lm)
 
 bin.highgc.lm <- lm(
   data = bin.features.normchr[bin.features.normchr$GC.content >= 0.4,],
-  formula = mut.count ~ GC.content + cds.binary + transcript.binary + hist.binary + lincRNA.binary
+  formula = mut.count ~ GC.content + cds.binary + micro.binary + hist.binary + lincRNA.binary
 )
 summary(bin.highgc.lm)
 
 # Adding chromosome as a random effect.
 bin.lowgc.lme <- lmer(
   data = bin.features.normchr[bin.features.normchr$GC.content < 0.4,],
-  formula = mut.count ~ GC.content + cds.binary + transcript.binary + hist.binary + lincRNA.binary + (1|chr)
+  formula = mut.count ~ GC.content + cds.binary + micro.binary + hist.binary + lincRNA.binary + (1|chr)
 )
 summary(bin.lowgc.lme)
 
 bin.highgc.lme <- lmer(
   data = bin.features.normchr[bin.features.normchr$GC.content >= 0.4,],
-  formula = mut.count ~ GC.content + cds.binary + transcript.binary + hist.binary + lincRNA.binary + (1|chr)
+  formula = mut.count ~ GC.content + cds.binary + micro.binary + hist.binary + lincRNA.binary + (1|chr)
 )
 summary(bin.highgc.lme)
 
@@ -532,5 +538,3 @@ AIC(bin.lowgc.lm)
 AIC(bin.highgc.lm)
 AIC(bin.lowgc.lme)
 AIC(bin.highgc.lme)
-
-# Repeats?
