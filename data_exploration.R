@@ -378,10 +378,15 @@ hist(bin.features.all$GC.content)
 boxcox(bin.features.all$mut.count + 0.5 ~ 1, lambda = seq(0.8, 1, by = 0.01))
 boxcox(bin.features.all$GC.content ~ 1, lambda = seq(-3, -2, by = 0.01))
 hist((bin.features.all$mut.count + 0.5) ^ 0.9)
-ggplot(data = bin.features.all,
-       aes(x = GC.content, y = (mut.count + 0.5) ^ 0.9)) +
+png(filename = "mut_vs_GC.png", width = 480, height = 480)
+ggplot(data = bin.features.normchr,
+       aes(x = GC.content * 100, y = mut.count)) +
   geom_point() +
-  geom_smooth()
+  geom_smooth() +
+  ylab("Mutation density") +
+  xlab("%GC content") +
+  theme_bw(base_size = 28)
+dev.off()
 
 with(bin.features.normchr,
      cor.test(mut.count, cds.binary, method = "spearman"))
@@ -527,3 +532,5 @@ AIC(bin.lowgc.lm)
 AIC(bin.highgc.lm)
 AIC(bin.lowgc.lme)
 AIC(bin.highgc.lme)
+
+# Repeats?
