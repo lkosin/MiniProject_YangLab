@@ -183,9 +183,9 @@ ahub.gr.hs.ucsc.hg19[[114]]
 hg19.microsatellites.gr <- ahub.gr.hs.ucsc.hg19[[114]]
 
 # Checking Organism.dplyr
-src.hg19 <- src_organism("TxDb.Hsapiens.UCSC.hg19.knownGene")
-src.hg19
-colnames(src.hg19)
+# src.hg19 <- src_organism("TxDb.Hsapiens.UCSC.hg19.knownGene")
+# src.hg19
+# colnames(src.hg19)
 
 # Splitting genome into non-overlapping windows.
 chr1.length <- length(chr1)
@@ -228,7 +228,8 @@ bin.chr1.lm <- lm(
 summary(bin.chr1.lm)
 
 # Scaling up for all chromosomes.
-# Selecting the main chromosomes.
+# Selecting the main chromosomes. Note that I include chrM here, and then exclude it
+# later in the analysis.
 seqlevels(hg19)
 chromosomes.norm <- c("chr1", "chr2", "chr3", "chr4", "chr5",
                       "chr6", "chr7", "chr8", "chr9", "chr10",
@@ -344,17 +345,17 @@ tail(bin.features.all[bin.features.all$chr %in% chromosomes.norm,])
 length(hg19.bins)
 
 # The lengths don't match the total length in hg19.bins.
-hg19.bins[seqnames(hg19.bins) %in% chromosomes.norm]
-distanceToNearest(hg19.bins[seqnames(hg19.bins) %in% chromosomes.norm], hg19.cds, ignore.strand = T)
-
-hg19.bins[seqnames(hg19.bins) == "chrM"]
-distanceToNearest(hg19.bins[seqnames(hg19.bins) == "chrM"], hg19.cds, ignore.strand = T)
-unique(seqnames(hg19.cds))
+# hg19.bins[seqnames(hg19.bins) %in% chromosomes.norm]
+# distanceToNearest(hg19.bins[seqnames(hg19.bins) %in% chromosomes.norm], hg19.cds, ignore.strand = T)
+# 
+# hg19.bins[seqnames(hg19.bins) == "chrM"]
+# distanceToNearest(hg19.bins[seqnames(hg19.bins) == "chrM"], hg19.cds, ignore.strand = T)
+# unique(seqnames(hg19.cds))
 # Some of the seqnames in hg19.bins are not in hg19.cds. OK.
-chromosomes.norm[1:24]
-
-hg19.bins[seqnames(hg19.bins) %in% chromosomes.norm[1:24]]
-distanceToNearest(hg19.bins[seqnames(hg19.bins) %in% chromosomes.norm[1:24]], hg19.cds, ignore.strand = T)
+# chromosomes.norm[1:24]
+# 
+# hg19.bins[seqnames(hg19.bins) %in% chromosomes.norm[1:24]]
+# distanceToNearest(hg19.bins[seqnames(hg19.bins) %in% chromosomes.norm[1:24]], hg19.cds, ignore.strand = T)
 
 # Adding in other features.
 bin.features.all$cds.distance <- NA
@@ -486,6 +487,9 @@ bin.sample
 bin.sample$SampleID <- NA
 bin.sample$mut.count <- NA
 
+##################################################
+# WARNING: THE FOLLOWING CODE TAKES HOURS TO RUN #
+##################################################
 for (i in 1:length(unique(mut.data$SampleID))) {
   for (j in 1:length(bin.features.normchr$id)) {
     bin.sample$SampleID[(length(bin.features.normchr$id) * (i - 1)) + j] <- unique(mut.data$SampleID)[i]
@@ -538,3 +542,8 @@ AIC(bin.lowgc.lm)
 AIC(bin.highgc.lm)
 AIC(bin.lowgc.lme)
 AIC(bin.highgc.lme)
+
+# The AIC is improved, but there does not appear to be any obvious benefit to the mixed
+# models for understanding the relationship between mutation density and the genomic
+# features examined here. However, note that the models were not properly evaluated for
+# their predictive ability, as prediction is not the goal here.
